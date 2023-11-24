@@ -5,7 +5,7 @@ import express from "express"
 import cookieParser from "cookie-parser"
 import { join } from "path"
 
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient, Role, User } from "@prisma/client"
 
 
 const prisma = new PrismaClient()
@@ -39,8 +39,7 @@ app.get("/auth", (req, res) => {
     res.sendFile(getFilePath("auth.html"))
 })
 
-
-app.post("/api/register", async (req, res) => {
+app.post("/api/user/register", async (req, res) => {
     const { email, password } = req.body
 
     const passwordHash = sha256(password)
@@ -48,7 +47,7 @@ app.post("/api/register", async (req, res) => {
     const user = await prisma.user.create({
         data: {
             email,
-            password: passwordHash
+            password: passwordHash,
         }
     }).catch((err) => {
         res.send(err)
@@ -58,6 +57,102 @@ app.post("/api/register", async (req, res) => {
 
     res.cookie("token", user.token)
     res.send(user)
+})
+
+app.post("/api/user/remove", async (req, res) => {
+    const { token, executingToken }: { token: string, executingToken: string} = req.body
+
+    if (token === executingToken) {
+        const user = await prisma.user.delete({
+            where: {
+                token: token
+            }
+        }).catch((err) => {
+            res.send(err)
+        })
+
+        if (!user) return res.sendStatus(401)
+    } else {
+        const adminUser = await prisma.user.findUnique({
+            where: {
+                token: executingToken,
+                role: Role.ADMIN,
+
+                OR: [
+                    {
+                        token: token,
+                        role: Role.MANAGER
+                    }
+                ]
+            }
+        }).catch((err) => {
+            res.send(err)
+        })
+
+        if (!adminUser) return res.sendStatus(401)
+
+        const user = await prisma.user.delete({
+            where: {
+                token: token
+            }
+        }).catch((err) => {
+            res.send(err)
+        })
+
+        if (!user) return res.sendStatus(404)
+    }
+
+    res.sendStatus(200)
+})
+
+app.post("/api/user/edit", async (req, res) => {
+    const { token, executingToken, user: newUser }: { token: string, executingToken: string, user: Partial<User>} = req.body
+
+    if (token === executingToken) {
+        const user = await prisma.user.update({
+            where: {
+                token: token
+            },
+            
+            data: newUser
+        }).catch((err) => {
+            res.send(err)
+        })
+
+        if (!user) return res.sendStatus(401)
+    } else {
+        const adminUser = await prisma.user.findUnique({
+            where: {
+                token: executingToken,
+                role: Role.ADMIN,
+
+                OR: [
+                    {
+                        token: token,
+                        role: Role.MANAGER
+                    }
+                ]
+            }
+        }).catch((err) => {
+            res.send(err)
+        })
+
+        if (!adminUser) return res.sendStatus(401)
+
+        const user = await prisma.user.update({
+            where: {
+                token: token
+            },
+
+            data: newUser
+        }).catch((err) => {
+            res.send(err)
+        })
+
+        if (!user) return res.sendStatus(404)
+    }
+
+    res.sendStatus(200)
 })
 
 app.post("/api/login", async (req, res) => {
@@ -78,67 +173,6 @@ app.post("/api/login", async (req, res) => {
 
     res.cookie("token", user.token)
     res.send(user)
-})
-
-app.post("/api/note", async (req, res) => {
-    const token = req.cookies.token
-
-    const user = await prisma.user.findUnique({
-        where: {
-            token
-        }
-    }).catch((err) => {
-        res.send(err)
-    })
-
-    if (!user) return res.sendStatus(401)
-
-    const { title, content } = req.body
-
-    const note = await prisma.note.create({
-        data: {
-            title,
-            content,
-
-            author: {
-                connect: {
-                    id: user.id
-                }
-            }
-        }
-    }).catch((err) => {
-        res.send(err)
-    })
-
-    if (!note) return res.sendStatus(400)
-    res.send(note)
-})
-
-app.get("/api/note", async (req, res) => {
-    const { token } = req.body
-
-
-    const user = await prisma.user.findUnique({
-        where: {
-            token
-        }
-    }).catch((err) => {
-        res.send(err)
-    })
-
-    if (!user) return res.sendStatus(401)
-
-    const notes = await prisma.note.findMany({
-        where: {
-            authorId: user.id
-        }
-    }).catch((err) => {
-        res.send(err)
-    })
-
-    if (!notes) return res.sendStatus(400)
-
-    res.send(notes)
 })
 
 app.listen(8080, () => {
