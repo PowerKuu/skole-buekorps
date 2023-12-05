@@ -4,8 +4,237 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 1rem;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        .companies {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .company {
+            display: flex;
+            align-items: center;
+            background-color: white;
+            width: 125px;
+            height: 50px;
+
+            padding: 0.5rem;
+
+            border: 1px solid gray;
+
+            border-radius: 0.25rem;
+
+            font-size: 1.25rem;
+
+            background-color: black;
+            color: white;
+
+            cursor: pointer;
+        }
+
+        .company.delete-mode:not(.add) {
+            background-color: red;
+            border-color: red;
+        }
+
+        .company.add {
+            background-color: white;
+            color: black;
+            border: 1px dashed gray;
+        }
+
+        .head {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+
+            cursor: pointer;
+        }
+
+        button {
+            padding: 0.5rem;
+            border: none;
+            border-radius: 0.25rem;
+            background-color: black;
+            color: white;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+    </style>
 </head>
 <body>
-    <p>home</p>
+<div class="head">
+    <h1 class="h1">Kompanier</h1>
+
+    <div>
+        <button>Logg ut</button>
+        <button onclick="toggleDeleteMode()">Delete</button>
+    </div>
+</div>
+
+
+<div class="companies">
+    <div class="company add">
+        <p>+</p>
+    </div>
+</div>
+
+<script>
+const companies = document.querySelector(".companies")
+const add = document.querySelector(".add")
+const heading = document.querySelector(".h1")
+const boxes = document.querySelectorAll(".company")
+
+async function requestServer(path, data) {
+    try {
+        const req = await fetch(path, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+        })
+
+        const json = await req.json()
+
+        return json
+    } catch (error) {
+        return null
+    }
+
+    const json = await req.json()
+
+
+    return json
+}
+
+
+let deleteMode = false
+let companyID = null
+
+
+
+async function loadUsers() {
+    const req = await requestServer("/api/users", {})
+
+    if (!req) return alert("Error")
+
+    const users = req.users
+
+    const list = document.querySelector("#list")
+
+    users.forEach(user => {
+        const li = document.createElement("li")
+        li.innerText = user.email
+        list.appendChild(li)
+    })
+}
+
+
+
+function addBox(name, onclick = null) {
+    const element = document.createElement("div")
+
+    element.classList.add("company")
+
+    const p = document.createElement("p")
+
+    p.innerText = name
+
+    if (onclick) {
+        element.addEventListener("click", onclick)
+    }
+
+
+    element.appendChild(p)
+
+    companies.insertBefore(element, add)
+}
+
+function clearBoxes() {
+    const list = document.querySelectorAll(".company")
+
+    for (const company of list) {
+        if (!company.classList.contains("add")) {
+            company.remove()
+        }
+    }
+}
+
+
+
+
+
+function toggleDeleteMode() {
+    deleteMode = !deleteMode
+
+    const list = document.querySelectorAll(".company")
+    console.log(list)
+    for (const company of list) {
+        if (deleteMode) {
+            company.classList.add("delete-mode")
+        } else {
+            company.classList.remove("delete-mode")
+        }
+    }
+}
+
+heading.addEventListener("click", () => {
+    if (companyID) {
+        changeMode()
+    }
+})
+
+function changeMode(newCompanyID = null) {
+    heading.innerText = newCompanyID ? "< Pelotonger" : "Kompanier"
+    add.innerText = newCompanyID ? "Ny pelotong" : "Ny kompani"
+
+
+    clearBoxes()
+
+    if (newCompanyID) {
+        addBox("Pomp", () => {
+            if (deleteMode) {
+                
+            }
+
+            window.location.href = `/company/${companyID}/peloton/test`
+        })
+    } else {
+        addBox("Test", () => {
+            if (deleteMode) {
+                
+            }
+
+            changeMode("test")
+        })
+    }
+
+    companyID = newCompanyID
+}
+
+
+function toggleAddPopup() {
+    const popup = document.querySelector(".popup")
+
+    popup.classList.toggle("hidden")
+}
+
+changeMode()
+</script>
+
 </body>
 </html>

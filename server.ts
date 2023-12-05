@@ -60,105 +60,65 @@ app.post("/api/user/register", async (req, res) => {
 })
 
 app.post("/api/user/remove", async (req, res) => {
-    const { token, executingToken }: { token: string, executingToken: string} = req.body
 
-    if (token === executingToken) {
-        const user = await prisma.user.delete({
-            where: {
-                token: token
-            }
-        }).catch((err) => {
-            res.send(err)
-        })
+})
 
-        if (!user) return res.sendStatus(401)
-    } else {
-        const adminUser = await prisma.user.findUnique({
-            where: {
-                token: executingToken,
-                role: Role.ADMIN,
+app.post("/api/user/edit", async (req, res) => {
+    const { companyID, userID, executingToken, user: newUser }: { companyID: number, userID?: number, executingToken: string, user: Partial<User>} = req.body
 
-                OR: [
-                    {
-                        token: token,
-                        role: Role.MANAGER
-                    }
-                ]
-            }
-        }).catch((err) => {
-            res.send(err)
-        })
+    const selfEdit = userID === undefined
 
-        if (!adminUser) return res.sendStatus(401)
-
-        const user = await prisma.user.delete({
-            where: {
-                token: token
-            }
-        }).catch((err) => {
-            res.send(err)
-        })
-
-        if (!user) return res.sendStatus(404)
-    }
+    
 
     res.sendStatus(200)
 })
 
-app.post("/api/user/edit", async (req, res) => {
-    const { token, executingToken, user: newUser }: { token: string, executingToken: string, user: Partial<User>} = req.body
+app.post("/api/company/get", async (req, res) => {
+    const { executingToken, companyID }: { executingToken: string, companyID: number } = req.body
 
-    if (token === executingToken) {
-        const user = await prisma.user.update({
-            where: {
-                token: token
-            },
-            
-            data: newUser
-        }).catch((err) => {
-            res.send(err)
-        })
-
-        if (!user) return res.sendStatus(401)
-    } else {
-        const adminUser = await prisma.user.findUnique({
-            where: {
-                token: executingToken,
-                role: Role.ADMIN,
-
-                OR: [
-                    {
-                        token: token,
-                        role: Role.MANAGER
-                    }
-                ]
+    const userOnCompany = await prisma.user.findUnique({
+        where: {
+            token: executingToken,
+            peloton: {
+                companyId: companyID
             }
-        }).catch((err) => {
-            res.send(err)
-        })
+        }
+    }).catch((err) => {
+        res.send(err)
+    })
 
-        if (!adminUser) return res.sendStatus(401)
+    
 
-        const user = await prisma.user.update({
-            where: {
-                token: token
-            },
+    if (!userOnCompany) return res.sendStatus(401)
 
-            data: newUser
-        }).catch((err) => {
-            res.send(err)
-        })
+    const company = await prisma.company.findFirst({
+        where: {
+            id: companyID
+        },
 
-        if (!user) return res.sendStatus(404)
-    }
+        include: {
+            pelotons: {
+                include: {
+                    users: {
+                        select: {
+                            email: true
+                        }
+                    }
+                }
+            }
+        }
+    })
 
-    res.sendStatus(200)
+    
+    res.send(company)
 })
 
 app.post("/api/login", async (req, res) => {
     const { email, password } = req.body
 
     const passwordHash = sha256(password)
+
+    console.log(email, passwordHash)
 
     const user = await prisma.user.findUnique({
         where: {
@@ -176,5 +136,5 @@ app.post("/api/login", async (req, res) => {
 })
 
 app.listen(8080, () => {
-    console.log('Server is running on port 3000')
+    console.log('Server is running')
 })

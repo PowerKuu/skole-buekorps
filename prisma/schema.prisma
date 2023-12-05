@@ -10,19 +10,51 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Company {
+  id       Int       @id @default(autoincrement())
+
+
+  pelotons Platoon[]
+  admins   AdminOnCompany[]
+}
+
+model AdminOnCompany {
+  id Int @id @default(autoincrement())
+
+  company   Company @relation(fields: [companyId], references: [id])
+  companyId Int
+
+  user   User @relation(fields: [userId], references: [id])
+  userId Int
+
+  level AdminLevel
+}
+
+model Platoon {
+  id Int @id @default(autoincrement())
+
+  company   Company @relation(fields: [companyId], references: [id])
+  companyId Int
+
+  users User[]
+}
+
+
 model User {
-  id       Int    @id @default(autoincrement())
-  email    String @unique
+  id       Int     @id @default(autoincrement())
+  email    String  @unique
   password String
   phone    String?
 
-  token    String @unique @default(uuid())
+  token String @unique @default(uuid())
 
-  role Role @default(USER)
+  peloton Platoon? @relation(fields: [pelotonId], references: [id])
+  pelotonId Int?
+
+  adminCompanies AdminOnCompany[]
 }
 
-enum Role {
-  USER
+enum AdminLevel {
   MANAGER
   ADMIN
 }

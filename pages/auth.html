@@ -6,6 +6,60 @@
     <title>Document</title>
 </head>
 <body>
-    <p>Login</p>
+
+<p>Login</p>
+<form id="form">
+    <input type="text" name="email" placeholder="Email">
+    <input type="password" name="password" placeholder="Password">
+    <button type="submit">Login</button>
+</form>
+
+
+<script>
+const form = document.querySelector("#form")
+
+async function requestServer(path, data) {
+    try {
+        const req = await fetch(path, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+        })
+
+        const json = await req.json()
+
+        return json
+    } catch (error) {
+        return null
+    }
+
+    const json = await req.json()
+
+
+    return json
+}
+
+async function submit(event) {
+    console.log("submit")
+    event.preventDefault()
+    const formData = new FormData(event.target)
+
+
+    const data = Object.fromEntries(formData)
+
+
+    const req = await requestServer("/api/login", data)
+
+
+    if (!req) return alert("Error")
+
+    window.location.href = "/"
+}
+
+form.addEventListener("submit", submit)
+</script>
+
 </body>
 </html>
